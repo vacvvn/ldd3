@@ -10,6 +10,7 @@ Session.vim
 *.o
 core
 *.ko
+*.mod
 *.mod.c
 Module.symvers
 modules.order
