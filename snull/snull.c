@@ -15,8 +15,21 @@
  * $Id: snull.c,v 1.21 2004/11/05 02:36:03 rubini Exp $
  */
 /*
+Once you put these lines in /etc/networks, you can call your networks by name. 
+snullnet0 192.168.0.0
+snullnet1 192.168.1.0
+
+The following are possible host numbers to put into /etc/hosts:
+192.168.0.1 local0
+192.168.0.2 remote0
+192.168.1.2 local1
+192.168.1.1 remote1
+
 ifconfig sn0 local0
 ifconfig sn1 local1
+
+ping -c 2 remote0
+ping -c 2 remote1
 */
 
 #include <linux/module.h>
@@ -105,7 +118,7 @@ void snull_setup_pool(struct net_device *dev)
     struct snull_priv *priv = netdev_priv(dev);
     int i;
     struct snull_packet *pkt;
-    printk(KERN_NOTICE"snull_setup_pool");
+    printk(KERN_NOTICE"snull_setup_pool. Pool_elements count: %d; Pool element size: %d", pool_size, sizeof (struct snull_packet));
     priv->ppool = NULL;
     for (i = 0; i < pool_size; i++) {
         pkt = kmalloc (sizeof (struct snull_packet), GFP_KERNEL);
@@ -201,7 +214,7 @@ struct snull_packet *snull_dequeue_buf(struct net_device *dev)
  */
 static void snull_rx_ints(struct net_device *dev, int enable)
 {
-    printk(KERN_NOTICE"snull_rx_ints");
+    printk(KERN_NOTICE"snull_rx_ints %s",(enable == 1) ? "ena": "disa");
     struct snull_priv *priv = netdev_priv(dev);
     priv->rx_int_enabled = enable;
 }
@@ -577,7 +590,7 @@ void snull_tx_timeout (struct net_device *dev)
 int snull_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
     PDEBUG("ioctl\n");
-    printk(KERN_NOTICE"ioctl: 0x%x", cmd);	
+    // printk(KERN_NOTICE"ioctl: 0x%x", cmd);	
     return 0;
 }
 
@@ -587,7 +600,8 @@ int snull_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 struct net_device_stats *snull_stats(struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
-    printk(KERN_NOTICE"snull_stats: 0x%08x", priv->status);
+    if(priv->status != 0)
+        printk(KERN_NOTICE"snull_stats: 0x%08x", priv->status);
     return &priv->stats;
 }
 
