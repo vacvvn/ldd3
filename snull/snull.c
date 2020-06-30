@@ -14,6 +14,10 @@
  *
  * $Id: snull.c,v 1.21 2004/11/05 02:36:03 rubini Exp $
  */
+/*
+ifconfig sn0 local0
+ifconfig sn1 local1
+*/
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -101,7 +105,7 @@ void snull_setup_pool(struct net_device *dev)
     struct snull_priv *priv = netdev_priv(dev);
     int i;
     struct snull_packet *pkt;
-
+    printk(KERN_NOTICE"snull_setup_pool");
     priv->ppool = NULL;
     for (i = 0; i < pool_size; i++) {
         pkt = kmalloc (sizeof (struct snull_packet), GFP_KERNEL);
@@ -117,6 +121,7 @@ void snull_setup_pool(struct net_device *dev)
 
 void snull_teardown_pool(struct net_device *dev)
 {
+    printk(KERN_NOTICE"snull_teardown_pool");
     struct snull_priv *priv = netdev_priv(dev);
     struct snull_packet *pkt;
     
@@ -136,6 +141,7 @@ struct snull_packet *snull_get_tx_buffer(struct net_device *dev)
     unsigned long flags;
     struct snull_packet *pkt;
     
+    printk(KERN_NOTICE"snull_get_tx_buffer");
     spin_lock_irqsave(&priv->lock, flags);
     pkt = priv->ppool;
     priv->ppool = pkt->next;
@@ -151,6 +157,8 @@ struct snull_packet *snull_get_tx_buffer(struct net_device *dev)
 void snull_release_buffer(struct snull_packet *pkt)
 {
     unsigned long flags;
+
+    printk(KERN_NOTICE"snull_release_buffer");
     struct snull_priv *priv = netdev_priv(pkt->dev);
     
     spin_lock_irqsave(&priv->lock, flags);
@@ -164,6 +172,7 @@ void snull_release_buffer(struct snull_packet *pkt)
 void snull_enqueue_buf(struct net_device *dev, struct snull_packet *pkt)
 {
     unsigned long flags;
+    printk(KERN_NOTICE"snull_enqueue_buf");
     struct snull_priv *priv = netdev_priv(dev);
 
     spin_lock_irqsave(&priv->lock, flags);
@@ -175,6 +184,7 @@ void snull_enqueue_buf(struct net_device *dev, struct snull_packet *pkt)
 struct snull_packet *snull_dequeue_buf(struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
+    printk(KERN_NOTICE"snull_dequeue_buf");
     struct snull_packet *pkt;
     unsigned long flags;
 
@@ -191,6 +201,7 @@ struct snull_packet *snull_dequeue_buf(struct net_device *dev)
  */
 static void snull_rx_ints(struct net_device *dev, int enable)
 {
+    printk(KERN_NOTICE"snull_rx_ints");
     struct snull_priv *priv = netdev_priv(dev);
     priv->rx_int_enabled = enable;
 }
@@ -257,6 +268,7 @@ int snull_config(struct net_device *dev, struct ifmap *map)
 void snull_rx(struct net_device *dev, struct snull_packet *pkt)
 {
     struct sk_buff *skb;
+    printk(KERN_NOTICE"snull_rx");
     struct snull_priv *priv = netdev_priv(dev);
 
     /*
@@ -291,6 +303,7 @@ void snull_rx(struct net_device *dev, struct snull_packet *pkt)
 static int snull_poll(struct napi_struct *napi, int budget)
 {
     int npackets = 0;
+    printk(KERN_NOTICE"snull_poll");
     struct sk_buff *skb;
     struct snull_priv *priv = container_of(napi, struct snull_priv, napi);
     struct net_device *dev = priv->dev;
@@ -338,6 +351,7 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     int statusword;
     struct snull_priv *priv;
     struct snull_packet *pkt = NULL;
+    printk(KERN_NOTICE"snull_regular_interrupt");
     /*
      * As usual, check the "device" pointer to be sure it is
      * really interrupting.
@@ -386,6 +400,7 @@ static void snull_napi_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     int statusword;
     struct snull_priv *priv;
 
+    printk(KERN_NOTICE"snull_napi_interrupt");
     /*
      * As usual, check the "device" pointer for shared handlers.
      * Then assign "struct device *dev"
@@ -439,6 +454,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     u32 *saddr, *daddr;
     struct snull_packet *tx_buffer;
     
+    printk(KERN_NOTICE"snull_hw_tx");
     /* I am paranoid. Ain't I? */
     if (len < sizeof(struct ethhdr) + sizeof(struct iphdr)) {
         printk("snull: Hmm... packet too short (%i octets)\n",
@@ -511,6 +527,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
  */
 int snull_tx(struct sk_buff *skb, struct net_device *dev)
 {
+    printk(KERN_NOTICE"snull_tx");
     int len;
     char *data, shortpkt[ETH_ZLEN];
     struct snull_priv *priv = netdev_priv(dev);
@@ -541,7 +558,8 @@ void snull_tx_timeout (struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
 
-    PDEBUG("Transmit timeout at %ld, latency %ld\n", jiffies,
+    printk(KERN_NOTICE"kern_notice");
+    PDEBUG(KERN_NOTICE"Transmit timeout at %ld, latency %ld\n", jiffies,
             jiffies - dev->trans_start);
         /* Simulate a transmission interrupt to get things moving */
     priv->status = SNULL_TX_INTR;
@@ -569,6 +587,7 @@ int snull_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 struct net_device_stats *snull_stats(struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
+    printk(KERN_NOTICE"snull_stats: 0x%08x", priv->status);
     return &priv->stats;
 }
 
@@ -581,6 +600,7 @@ int snull_rebuild_header(struct sk_buff *skb)
     struct ethhdr *eth = (struct ethhdr *) skb->data;
     struct net_device *dev = skb->dev;
     
+    printk(KERN_NOTICE"snull_rebuild_header");
     memcpy(eth->h_source, dev->dev_addr, dev->addr_len);
     memcpy(eth->h_dest, dev->dev_addr, dev->addr_len);
     eth->h_dest[ETH_ALEN-1]   ^= 0x01;   /* dest is us xor 1 */
@@ -594,6 +614,7 @@ int snull_header(struct sk_buff *skb, struct net_device *dev,
 {
     struct ethhdr *eth = (struct ethhdr *)skb_push(skb,ETH_HLEN);
 
+    printk(KERN_NOTICE"snull_header");
     eth->h_proto = htons(type);
     memcpy(eth->h_source, saddr ? saddr : dev->dev_addr, dev->addr_len);
     memcpy(eth->h_dest,   daddr ? daddr : dev->dev_addr, dev->addr_len);
@@ -615,6 +636,7 @@ int snull_change_mtu(struct net_device *dev, int new_mtu)
     struct snull_priv *priv = netdev_priv(dev);
     spinlock_t *lock = &priv->lock;
     
+    printk(KERN_NOTICE"snull_change_mtu");
     /* check ranges */
     if ((new_mtu < 68) || (new_mtu > 1500))
         return -EINVAL;
@@ -699,7 +721,7 @@ struct net_device *snull_devs[2];
 void snull_cleanup(void)
 {
     int i;
-    
+    printk(KERN_NOTICE"snull_cleanup");
     for (i = 0; i < 2;  i++) {
         if (snull_devs[i]) {
             unregister_netdev(snull_devs[i]);
