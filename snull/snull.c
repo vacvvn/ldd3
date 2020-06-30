@@ -118,7 +118,7 @@ void snull_setup_pool(struct net_device *dev)
     struct snull_priv *priv = netdev_priv(dev);
     int i;
     struct snull_packet *pkt;
-    printk(KERN_NOTICE"snull_setup_pool. Pool_elements count: %d; Pool element size: %d", pool_size, sizeof (struct snull_packet));
+    printk(KERN_NOTICE"%s: snull_setup_pool. Pool_elements count: %d; Pool element size: %d",dev->name, pool_size, sizeof (struct snull_packet));
     priv->ppool = NULL;
     for (i = 0; i < pool_size; i++) {
         pkt = kmalloc (sizeof (struct snull_packet), GFP_KERNEL);
@@ -134,7 +134,7 @@ void snull_setup_pool(struct net_device *dev)
 
 void snull_teardown_pool(struct net_device *dev)
 {
-    printk(KERN_NOTICE"snull_teardown_pool");
+    printk(KERN_NOTICE"%s: snull_teardown_pool", dev->name);
     struct snull_priv *priv = netdev_priv(dev);
     struct snull_packet *pkt;
     
@@ -154,7 +154,7 @@ struct snull_packet *snull_get_tx_buffer(struct net_device *dev)
     unsigned long flags;
     struct snull_packet *pkt;
     
-    printk(KERN_NOTICE"snull_get_tx_buffer");
+    printk(KERN_NOTICE"%s, snull_get_tx_buffer", dev->name);
     spin_lock_irqsave(&priv->lock, flags);
     pkt = priv->ppool;
     priv->ppool = pkt->next;
@@ -185,7 +185,7 @@ void snull_release_buffer(struct snull_packet *pkt)
 void snull_enqueue_buf(struct net_device *dev, struct snull_packet *pkt)
 {
     unsigned long flags;
-    printk(KERN_NOTICE"snull_enqueue_buf");
+    printk(KERN_NOTICE"%s: snull_enqueue_buf", dev->name);
     struct snull_priv *priv = netdev_priv(dev);
 
     spin_lock_irqsave(&priv->lock, flags);
@@ -197,7 +197,7 @@ void snull_enqueue_buf(struct net_device *dev, struct snull_packet *pkt)
 struct snull_packet *snull_dequeue_buf(struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
-    printk(KERN_NOTICE"snull_dequeue_buf");
+    printk(KERN_NOTICE"%s: snull_dequeue_buf", dev->name);
     struct snull_packet *pkt;
     unsigned long flags;
 
@@ -214,7 +214,7 @@ struct snull_packet *snull_dequeue_buf(struct net_device *dev)
  */
 static void snull_rx_ints(struct net_device *dev, int enable)
 {
-    printk(KERN_NOTICE"snull_rx_ints %s",(enable == 1) ? "ena": "disa");
+    printk(KERN_NOTICE"%s: snull_rx_ints %s", dev->name,(enable == 1) ? "ena": "disa");
     struct snull_priv *priv = netdev_priv(dev);
     priv->rx_int_enabled = enable;
 }
@@ -233,7 +233,7 @@ int snull_open(struct net_device *dev)
      * x is 0 or 1. The first byte is '\0' to avoid being a multicast
      * address (the first byte of multicast addrs is odd).
      */
-    printk(KERN_NOTICE"snull open");
+    printk(KERN_NOTICE"%s: snull open", dev->name);
     memcpy(dev->dev_addr, "\0SNUL0", ETH_ALEN);
     if (dev == snull_devs[1])
         dev->dev_addr[ETH_ALEN-1]++; /* \0SNUL1 */
@@ -245,7 +245,7 @@ int snull_release(struct net_device *dev)
 {
     /* release ports, irq and such -- like fops->close */
 
-    printk(KERN_NOTICE"snull release");
+    printk(KERN_NOTICE"%s: snull release", dev->name);
     netif_stop_queue(dev); /* can't transmit any more */
     return 0;
 }
@@ -255,7 +255,7 @@ int snull_release(struct net_device *dev)
  */
 int snull_config(struct net_device *dev, struct ifmap *map)
 {
-    printk(KERN_NOTICE"snull config");
+    printk(KERN_NOTICE"%s: snull config", dev->name);
     if (dev->flags & IFF_UP) /* can't act on a running interface */
         return -EBUSY;
 
@@ -281,7 +281,7 @@ int snull_config(struct net_device *dev, struct ifmap *map)
 void snull_rx(struct net_device *dev, struct snull_packet *pkt)
 {
     struct sk_buff *skb;
-    printk(KERN_NOTICE"snull_rx");
+    printk(KERN_NOTICE"%s: snull_rx", dev->name);
     struct snull_priv *priv = netdev_priv(dev);
 
     /*
@@ -316,10 +316,10 @@ void snull_rx(struct net_device *dev, struct snull_packet *pkt)
 static int snull_poll(struct napi_struct *napi, int budget)
 {
     int npackets = 0;
-    printk(KERN_NOTICE"snull_poll");
     struct sk_buff *skb;
     struct snull_priv *priv = container_of(napi, struct snull_priv, napi);
     struct net_device *dev = priv->dev;
+    printk(KERN_NOTICE"%s: snull_poll", dev->name);
     struct snull_packet *pkt;
     
     while (npackets < budget && priv->rx_queue) {
@@ -364,13 +364,13 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     int statusword;
     struct snull_priv *priv;
     struct snull_packet *pkt = NULL;
-    printk(KERN_NOTICE"snull_regular_interrupt");
     /*
      * As usual, check the "device" pointer to be sure it is
      * really interrupting.
      * Then assign "struct device *dev"
      */
     struct net_device *dev = (struct net_device *)dev_id;
+    printk(KERN_NOTICE"%s: snull_regular_interrupt", dev->name);
     /* ... and check with hw if it's really ours */
 
     /* paranoid */
@@ -413,12 +413,12 @@ static void snull_napi_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     int statusword;
     struct snull_priv *priv;
 
-    printk(KERN_NOTICE"snull_napi_interrupt");
     /*
      * As usual, check the "device" pointer for shared handlers.
      * Then assign "struct device *dev"
      */
     struct net_device *dev = (struct net_device *)dev_id;
+    printk(KERN_NOTICE"%s: snull_napi_interrupt", dev->name);
     /* ... and check with hw if it's really ours */
 
     /* paranoid */
@@ -467,7 +467,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     u32 *saddr, *daddr;
     struct snull_packet *tx_buffer;
     
-    printk(KERN_NOTICE"snull_hw_tx");
+    printk(KERN_NOTICE"%s: snull_hw_tx", dev->name);
     /* I am paranoid. Ain't I? */
     if (len < sizeof(struct ethhdr) + sizeof(struct iphdr)) {
         printk("snull: Hmm... packet too short (%i octets)\n",
@@ -540,7 +540,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
  */
 int snull_tx(struct sk_buff *skb, struct net_device *dev)
 {
-    printk(KERN_NOTICE"snull_tx");
+    printk(KERN_NOTICE"%s: snull_tx", dev->name);
     int len;
     char *data, shortpkt[ETH_ZLEN];
     struct snull_priv *priv = netdev_priv(dev);
@@ -571,7 +571,7 @@ void snull_tx_timeout (struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
 
-    printk(KERN_NOTICE"kern_notice");
+    printk(KERN_NOTICE"%s: kern_notice", dev->name);
     PDEBUG(KERN_NOTICE"Transmit timeout at %ld, latency %ld\n", jiffies,
             jiffies - dev->trans_start);
         /* Simulate a transmission interrupt to get things moving */
@@ -590,7 +590,7 @@ void snull_tx_timeout (struct net_device *dev)
 int snull_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
     PDEBUG("ioctl\n");
-    // printk(KERN_NOTICE"ioctl: 0x%x", cmd);	
+    // printk(KERN_NOTICE"%s: ioctl: 0x%x", dev->name, cmd);	
     return 0;
 }
 
@@ -601,7 +601,7 @@ struct net_device_stats *snull_stats(struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
     if(priv->status != 0)
-        printk(KERN_NOTICE"snull_stats: 0x%08x", priv->status);
+        printk(KERN_NOTICE"%s: snull_stats: 0x%08x", dev->name, priv->status);
     return &priv->stats;
 }
 
@@ -614,7 +614,7 @@ int snull_rebuild_header(struct sk_buff *skb)
     struct ethhdr *eth = (struct ethhdr *) skb->data;
     struct net_device *dev = skb->dev;
     
-    printk(KERN_NOTICE"snull_rebuild_header");
+    printk(KERN_NOTICE"%s: snull_rebuild_header", dev->name);
     memcpy(eth->h_source, dev->dev_addr, dev->addr_len);
     memcpy(eth->h_dest, dev->dev_addr, dev->addr_len);
     eth->h_dest[ETH_ALEN-1]   ^= 0x01;   /* dest is us xor 1 */
@@ -628,7 +628,7 @@ int snull_header(struct sk_buff *skb, struct net_device *dev,
 {
     struct ethhdr *eth = (struct ethhdr *)skb_push(skb,ETH_HLEN);
 
-    printk(KERN_NOTICE"snull_header");
+    printk(KERN_NOTICE"%s: snull_header", dev->name);
     eth->h_proto = htons(type);
     memcpy(eth->h_source, saddr ? saddr : dev->dev_addr, dev->addr_len);
     memcpy(eth->h_dest,   daddr ? daddr : dev->dev_addr, dev->addr_len);
@@ -650,7 +650,7 @@ int snull_change_mtu(struct net_device *dev, int new_mtu)
     struct snull_priv *priv = netdev_priv(dev);
     spinlock_t *lock = &priv->lock;
     
-    printk(KERN_NOTICE"snull_change_mtu");
+    printk(KERN_NOTICE"%s: snull_change_mtu", dev->name);
     /* check ranges */
     if ((new_mtu < 68) || (new_mtu > 1500))
         return -EINVAL;
