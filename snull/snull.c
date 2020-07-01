@@ -478,10 +478,18 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     if (1) { /* enable this conditional to look at the data */
         int i;
         PDEBUG("len is %i\n" KERN_DEBUG "data:",len);
-        for (i=0 ; i<len; i++)
-            printk(" %02x",buf[i]&0xff);
-        printk("\n");
-    }
+		u8 * dbg_buf = kmalloc((1+(len * 2)), GFP_KERNEL);
+		if(dbg_buf != NULL)
+		{
+			printk(KERN_NOTICE"dbg_buf: 0x%08x",(uint32_t)dbg_buf);
+			memset(dbg_buf, 0, ((len*2)+1));
+			for (i = 0; i < len; i++)
+				snprintf(&dbg_buf[i * 2], 2, "%02x", buf[i] & 0xff);
+			printk(KERN_NOTICE"dbg_buf: %s",dbg_buf);
+			printk("\n");
+			kfree(dbg_buf);
+		}
+	}
     /*
      * Ethhdr is 14 bytes, but the kernel arranges for iphdr
      * to be aligned (i.e., ethhdr is unaligned)

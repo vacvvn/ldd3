@@ -4,3 +4,4 @@
 insmod ./snull.ko $*
 ifconfig sn0 local0
 ifconfig sn1 local1
+dmesg -C
