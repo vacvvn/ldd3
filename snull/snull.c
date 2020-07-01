@@ -370,7 +370,6 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
      * Then assign "struct device *dev"
      */
     struct net_device *dev = (struct net_device *)dev_id;
-    printk(KERN_NOTICE"%s: snull_regular_interrupt", dev->name);
     /* ... and check with hw if it's really ours */
 
     /* paranoid */
@@ -384,6 +383,7 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     /* retrieve statusword: real netdevices use I/O instructions */
     statusword = priv->status;
     priv->status = 0;
+    printk(KERN_NOTICE"%s: snull_regular_interrupt; priv->status: 0x%x", dev->name, statusword);
     if (statusword & SNULL_RX_INTR) {
         /* send it to snull_rx for handling */
         pkt = priv->rx_queue;
@@ -475,10 +475,10 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
         return;
     }
 
-    if (0) { /* enable this conditional to look at the data */
+    if (1) { /* enable this conditional to look at the data */
         int i;
         PDEBUG("len is %i\n" KERN_DEBUG "data:",len);
-        for (i=14 ; i<len; i++)
+        for (i=0 ; i<len; i++)
             printk(" %02x",buf[i]&0xff);
         printk("\n");
     }
@@ -571,9 +571,9 @@ void snull_tx_timeout (struct net_device *dev)
 {
     struct snull_priv *priv = netdev_priv(dev);
 
-    printk(KERN_NOTICE"%s: kern_notice", dev->name);
-    PDEBUG(KERN_NOTICE"Transmit timeout at %ld, latency %ld\n", jiffies,
-            jiffies - dev->trans_start);
+    printk(KERN_NOTICE"%s: snull_tx_timeout", dev->name);
+    // PDEBUG(KERN_NOTICE"Transmit timeout at %ld, latency %ld\n", jiffies,
+    //         jiffies - dev->trans_start);
         /* Simulate a transmission interrupt to get things moving */
     priv->status = SNULL_TX_INTR;
     snull_interrupt(0, dev, NULL);
@@ -630,6 +630,7 @@ int snull_header(struct sk_buff *skb, struct net_device *dev,
 
     printk(KERN_NOTICE"%s: snull_header", dev->name);
     eth->h_proto = htons(type);
+	//copy mac-addresses
     memcpy(eth->h_source, saddr ? saddr : dev->dev_addr, dev->addr_len);
     memcpy(eth->h_dest,   daddr ? daddr : dev->dev_addr, dev->addr_len);
     eth->h_dest[ETH_ALEN-1]   ^= 0x01;   /* dest is us xor 1 */
