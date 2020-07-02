@@ -20,7 +20,7 @@
 
 #undef PDEBUG             /* undef it, just in case */
 #define SNULL_DEBUG
-// #define __KERNEL__
+#define __KERNEL__
 #ifdef SNULL_DEBUG
 #  ifdef __KERNEL__
      /* This one if debugging is on, and kernel space */
