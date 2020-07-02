@@ -383,7 +383,7 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     /* retrieve statusword: real netdevices use I/O instructions */
     statusword = priv->status;
     priv->status = 0;
-    printk(KERN_NOTICE"%s: snull_regular_interrupt; priv->status: 0x%x", dev->name, statusword);
+    printk(KERN_NOTICE"%s: snull_regular_interrupt ENTER; priv->status: 0x%x", dev->name, statusword);
     if (statusword & SNULL_RX_INTR) {
         /* send it to snull_rx for handling */
         pkt = priv->rx_queue;
@@ -402,6 +402,8 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
     /* Unlock the device and we are done */
     spin_unlock(&priv->lock);
     if (pkt) snull_release_buffer(pkt); /* Do this outside the lock! */
+
+    printk(KERN_NOTICE"%s: snull_regular_interrupt EXIT; ", dev->name);
     return;
 }
 
@@ -467,26 +469,26 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     u32 *saddr, *daddr;
     struct snull_packet *tx_buffer;
     
-    printk(KERN_NOTICE"%s: snull_hw_tx", dev->name);
+    printk(KERN_NOTICE"%s: snull_hw_tx ENTER", dev->name);
     /* I am paranoid. Ain't I? */
     if (len < sizeof(struct ethhdr) + sizeof(struct iphdr)) {
         printk("snull: Hmm... packet too short (%i octets)\n",
                 len);
-        return;
+        goto __LEAVE_HW_TX__;
     }
 
     if (1)
     { /* enable this conditional to look at the data */
         int i;
-        PDEBUG("len is %i\n" KERN_DEBUG "data:", len);
+        // PDEBUG("len is %i\n" KERN_DEBUG "data:", len);
         u8 *dbg_buf = kmalloc((1 + (len * 2)), GFP_KERNEL);
         if (dbg_buf != NULL)
         {
+            printk("\n");
             memset(dbg_buf, 0, ((len * 2) + 1));
             for (i = 0; i < len; i++)
                 snprintf(&dbg_buf[i * 2], 3, "%02x", buf[i] & 0xff);
-            printk(KERN_NOTICE "dbg_buf: %s", dbg_buf);
-            printk("\n");
+            printk(KERN_NOTICE "before: %s", dbg_buf);
             kfree(dbg_buf);
             dbg_buf = NULL;
         }
@@ -510,12 +512,33 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     ih->check = 0;         /* and rebuild the checksum (ip needs it) */
     ih->check = ip_fast_csum((unsigned char *)ih,ih->ihl);
 
+    if (1)
+    { /* enable this conditional to look at the data */
+        int i;
+        // PDEBUG("len is %i\n" KERN_DEBUG "data:", len);
+        u8 *dbg_buf = kmalloc((1 + (len * 2)), GFP_KERNEL);
+        if (dbg_buf != NULL)
+        {
+            memset(dbg_buf, 0, ((len * 2) + 1));
+            for (i = 0; i < len; i++)
+                snprintf(&dbg_buf[i * 2], 3, "%02x", buf[i] & 0xff);
+            printk(KERN_NOTICE " after: %s", dbg_buf);
+            kfree(dbg_buf);
+            dbg_buf = NULL;
+            printk("\n");
+        }
+        else
+        {
+            printk(KERN_ALERT"snull_hw_tx cant alloc mem");
+        }
+        
+    }
     if (dev == snull_devs[0])
-        PDEBUGG("%08x:%05i --> %08x:%05i\n",
+        PDEBUG("%08x:%05i --> %08x:%05i\n",
                 ntohl(ih->saddr),ntohs(((struct tcphdr *)(ih+1))->source),
                 ntohl(ih->daddr),ntohs(((struct tcphdr *)(ih+1))->dest));
     else
-        PDEBUGG("%08x:%05i <-- %08x:%05i\n",
+        PDEBUG("%08x:%05i <-- %08x:%05i\n",
                 ntohl(ih->daddr),ntohs(((struct tcphdr *)(ih+1))->dest),
                 ntohl(ih->saddr),ntohs(((struct tcphdr *)(ih+1))->source));
 
@@ -547,6 +570,8 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     }
     else
         snull_interrupt(0, dev, NULL);
+__LEAVE_HW_TX__:
+    printk(KERN_NOTICE"%s: snull_hw_tx EXIT", dev->name);
 }
 
 /*
@@ -642,12 +667,21 @@ int snull_header(struct sk_buff *skb, struct net_device *dev,
 {
     struct ethhdr *eth = (struct ethhdr *)skb_push(skb,ETH_HLEN);
 
-    printk(KERN_NOTICE"%s: snull_header", dev->name);
+    printk(KERN_NOTICE"%s: snull_header ENTER", dev->name);
+    printk(KERN_NOTICE"dev mac addr:\t%02x:%02x:%02x:%02x:%02x:%02x",dev->dev_addr[0],dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],dev->dev_addr[4],dev->dev_addr[5]);
     eth->h_proto = htons(type);
 	//copy mac-addresses
     memcpy(eth->h_source, saddr ? saddr : dev->dev_addr, dev->addr_len);
+    if(saddr == NULL)
+        printk(KERN_NOTICE"saddr param is NULL, copy dev_addr to source addr header field");
+    printk(KERN_NOTICE"source mac addr:\t%02x:%02x:%02x:%02x:%02x:%02x",eth->h_source[0],eth->h_source[1],eth->h_source[2],eth->h_source[3],eth->h_source[4],eth->h_source[5]);
     memcpy(eth->h_dest,   daddr ? daddr : dev->dev_addr, dev->addr_len);
+    if(daddr == NULL)
+        printk(KERN_NOTICE"daddr param is NULL, copy dev_addr to dest addr header field");
+    printk(KERN_NOTICE"dest mac addr before:\t%02x:%02x:%02x:%02x:%02x:%02x",eth->h_dest[0],eth->h_dest[1],eth->h_dest[2],eth->h_dest[3],eth->h_dest[4],eth->h_dest[5]);
     eth->h_dest[ETH_ALEN-1]   ^= 0x01;   /* dest is us xor 1 */
+    printk(KERN_NOTICE"dest mac addr after:\t%02x:%02x:%02x:%02x:%02x:%02x",eth->h_dest[0],eth->h_dest[1],eth->h_dest[2],eth->h_dest[3],eth->h_dest[4],eth->h_dest[5]);
+    printk(KERN_NOTICE"%s: snull_header EXIT", dev->name);
     return (dev->hard_header_len);
 }
 
