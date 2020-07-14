@@ -234,9 +234,9 @@ int snull_open(struct net_device *dev)
      * address (the first byte of multicast addrs is odd).
      */
     printk(KERN_NOTICE"%s: snull open", dev->name);
-    memcpy(dev->dev_addr, "\0SNUL0", ETH_ALEN);
+    memcpy(dev->dev_addr, "\0SNUL0", ETH_ALEN);//copy hw mac address [0SNUL0]
     if (dev == snull_devs[1])
-        dev->dev_addr[ETH_ALEN-1]++; /* \0SNUL1 */
+        dev->dev_addr[ETH_ALEN-1]++; /*change mac snull0 to snull1 for snull1 dev \0SNUL1 */
     netif_start_queue(dev);
     return 0;
 }
