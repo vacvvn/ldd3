@@ -216,6 +216,7 @@ ssize_t do_short_write (struct inode *inode, struct file *filp, const char __use
 		return -EFAULT;
 	ptr = kbuf;
 
+	print_hex_dump(KERN_INFO, "do_short_write buf\n", DUMP_PREFIX_ADDRESS, 16, 1,  kbuf, count, true);
 	if (use_mem)
 		mode = SHORT_MEMORY;
 
@@ -260,7 +261,6 @@ ssize_t short_write(struct file *filp, const char __user *buf, size_t count,
 		loff_t *f_pos)
 {
 	printk(KERN_INFO"short_write");
-	print_hex_dump(KERN_INFO, "short_write buf\n", DUMP_PREFIX_ADDRESS, 16, 1,  buf, count, true);
 	return do_short_write(file_dentry(filp)->d_inode, filp, buf, count, f_pos);
 }
 
