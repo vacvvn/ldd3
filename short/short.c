@@ -116,11 +116,9 @@ static inline void short_incr_bp(volatile unsigned long *index, int delta)
 int short_open (struct inode *inode, struct file *filp)
 {
 	extern struct file_operations short_i_fops;
-
-	printk(KERN_INFO"short_open");
+	printk(KERN_INFO"short_open. major: 0x%x; minor: 0x%x", imajor(inode), iminor(inode));
 	if (iminor (inode) & 0x80)
 		filp->f_op = &short_i_fops; /* the interrupt-driven node */
-	printk(KERN_INFO"short_open exit");
 	return 0;
 }
 
@@ -262,6 +260,7 @@ ssize_t short_write(struct file *filp, const char __user *buf, size_t count,
 		loff_t *f_pos)
 {
 	printk(KERN_INFO"short_write");
+	print_hex_dump(KERN_INFO, "short_write buf\n", DUMP_PREFIX_ADDRESS, 16, 1,  buf, count, true);
 	return do_short_write(file_dentry(filp)->d_inode, filp, buf, count, f_pos);
 }
 
