@@ -96,8 +96,10 @@ DECLARE_TASKLET(short_tasklet, short_do_tasklet, 0);
 static inline void short_incr_bp(volatile unsigned long *index, int delta)
 {
 	unsigned long new = *index + delta;
+	printk(KERN_INFO"short_incr_bp");
 	barrier();  /* Don't optimize these two together */
 	*index = (new >= (short_buffer + PAGE_SIZE)) ? short_buffer : new;
+	printk(KERN_INFO"short_incr_bp exit");
 }
 
 
@@ -115,14 +117,17 @@ int short_open (struct inode *inode, struct file *filp)
 {
 	extern struct file_operations short_i_fops;
 
+	printk(KERN_INFO"short_open");
 	if (iminor (inode) & 0x80)
 		filp->f_op = &short_i_fops; /* the interrupt-driven node */
+	printk(KERN_INFO"short_open exit");
 	return 0;
 }
 
 
 int short_release (struct inode *inode, struct file *filp)
 {
+	printk(KERN_INFO"short_release");
 	return 0;
 }
 
@@ -140,6 +145,7 @@ ssize_t do_short_read (struct inode *inode, struct file *filp, char __user *buf,
 	int mode = (minor&0x70) >> 4;
 	unsigned char *kbuf = kmalloc(count, GFP_KERNEL), *ptr;
     
+	printk(KERN_INFO"do_short_read");
 	if (!kbuf)
 		return -ENOMEM;
 	ptr = kbuf;
@@ -180,6 +186,7 @@ ssize_t do_short_read (struct inode *inode, struct file *filp, char __user *buf,
 	if ((retval > 0) && copy_to_user(buf, kbuf, retval))
 		retval = -EFAULT;
 	kfree(kbuf);
+	printk(KERN_INFO"do_short_read exit");
 	return retval;
 }
 
@@ -189,6 +196,7 @@ ssize_t do_short_read (struct inode *inode, struct file *filp, char __user *buf,
  */
 ssize_t short_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
+	printk(KERN_INFO"short_read");
 	return do_short_read(file_dentry(filp)->d_inode, filp, buf, count, f_pos);
 }
 
@@ -203,6 +211,7 @@ ssize_t do_short_write (struct inode *inode, struct file *filp, const char __use
 	int mode = (minor&0x70) >> 4;
 	unsigned char *kbuf = kmalloc(count, GFP_KERNEL), *ptr;
 
+	printk(KERN_INFO"do_short_write");
 	if (!kbuf)
 		return -ENOMEM;
 	if (copy_from_user(kbuf, buf, count))
@@ -244,6 +253,7 @@ ssize_t do_short_write (struct inode *inode, struct file *filp, const char __use
 		break;
 	}
 	kfree(kbuf);
+	printk(KERN_INFO"do_short_write exit");
 	return retval;
 }
 
@@ -251,6 +261,7 @@ ssize_t do_short_write (struct inode *inode, struct file *filp, const char __use
 ssize_t short_write(struct file *filp, const char __user *buf, size_t count,
 		loff_t *f_pos)
 {
+	printk(KERN_INFO"short_write");
 	return do_short_write(file_dentry(filp)->d_inode, filp, buf, count, f_pos);
 }
 
@@ -259,6 +270,7 @@ ssize_t short_write(struct file *filp, const char __user *buf, size_t count,
 
 unsigned int short_poll(struct file *filp, poll_table *wait)
 {
+	printk(KERN_INFO"short_poll");
 	return POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM;
 }
 
@@ -283,6 +295,7 @@ ssize_t short_i_read (struct file *filp, char __user *buf, size_t count, loff_t 
 	int count0;
 	DEFINE_WAIT(wait);
 
+	printk(KERN_INFO"short_i_read");
 	while (short_head == short_tail) {
 		prepare_to_wait(&short_queue, &wait, TASK_INTERRUPTIBLE);
 		if (short_head == short_tail)
@@ -300,6 +313,7 @@ ssize_t short_i_read (struct file *filp, char __user *buf, size_t count, loff_t 
 	if (copy_to_user(buf, (char *)short_tail, count))
 		return -EFAULT;
 	short_incr_bp (&short_tail, count);
+	printk(KERN_INFO"short_i_read exit");
 	return count;
 }
 
@@ -310,6 +324,7 @@ ssize_t short_i_write (struct file *filp, const char __user *buf, size_t count,
 	unsigned long port = short_base; /* output to the parallel data latch */
 	void *address = (void *) short_base;
 
+	printk(KERN_INFO"short_i_write");
 	if (use_mem) {
 		while (written < count)
 			iowrite8(0xff * ((++written + odd) & 1), address);
@@ -319,6 +334,7 @@ ssize_t short_i_write (struct file *filp, const char __user *buf, size_t count,
 	}
 
 	*f_pos += count;
+	printk(KERN_INFO"short_i_write exit");
 	return written;
 }
 
@@ -338,6 +354,7 @@ irqreturn_t short_interrupt(int irq, void *dev_id)
 	struct timespec64 tv;
 	int written;
 
+	printk(KERN_INFO"short_interrupt");
 	ktime_get_real_ts64(&tv);
 
 	    /* Write a 16 byte record. Assume PAGE_SIZE is a multiple of 16 */
@@ -346,6 +363,7 @@ irqreturn_t short_interrupt(int irq, void *dev_id)
 	BUG_ON(written != 16);
 	short_incr_bp(&short_head, written);
 	wake_up_interruptible(&short_queue); /* awake any reading process */
+	printk(KERN_INFO"short_interrupt exit");
 	return IRQ_HANDLED;
 }
 
@@ -381,6 +399,7 @@ static inline void short_incr_tv(volatile struct timespec64 **tvp)
 
 void short_do_tasklet (unsigned long unused)
 {
+	printk(KERN_INFO"short_do_tasklet");
 	int savecount = short_wq_count, written;
 	short_wq_count = 0; /* we have already been removed from the queue */
 	/*
@@ -407,11 +426,13 @@ void short_do_tasklet (unsigned long unused)
 	} while (tv_tail != tv_head);
 
 	wake_up_interruptible(&short_queue); /* awake any reading process */
+	printk(KERN_INFO"short_do_tasklet exit");
 }
 
 
 irqreturn_t short_wq_interrupt(int irq, void *dev_id)
 {
+	printk(KERN_INFO"short_wq_interrupt");
 	/* Grab the current time information. */
 	ktime_get_real_ts64((struct timespec64 *) tv_head);
 	short_incr_tv(&tv_head);
@@ -420,6 +441,7 @@ irqreturn_t short_wq_interrupt(int irq, void *dev_id)
 	schedule_work(&short_wq);
 
 	short_wq_count++; /* record that an interrupt arrived */
+	printk(KERN_INFO"short_wq_interrupt exit");
 	return IRQ_HANDLED;
 }
 
@@ -430,10 +452,12 @@ irqreturn_t short_wq_interrupt(int irq, void *dev_id)
 
 irqreturn_t short_tl_interrupt(int irq, void *dev_id)
 {
+	printk(KERN_INFO"short_tl_interrupt");
 	ktime_get_real_ts64((struct timespec64 *) tv_head); /* cast to stop 'volatile' warning */
 	short_incr_tv(&tv_head);
 	tasklet_schedule(&short_tasklet);
 	short_wq_count++; /* record that an interrupt arrived */
+	printk(KERN_INFO"short_tl_interrupt exit");
 	return IRQ_HANDLED;
 }
 
@@ -445,6 +469,7 @@ irqreturn_t short_sh_interrupt(int irq, void *dev_id)
 	int value, written;
 	struct timespec64 tv;
 
+	printk(KERN_INFO"short_sh_interrupt");
 	/* If it wasn't short, return immediately */
 	value = inb(short_base);
 	if (!(value & 0x80))
@@ -460,12 +485,14 @@ irqreturn_t short_sh_interrupt(int irq, void *dev_id)
 			(int)(tv.tv_sec % 100000000), (int)(tv.tv_nsec) / NSEC_PER_USEC);
 	short_incr_bp(&short_head, written);
 	wake_up_interruptible(&short_queue); /* awake any reading process */
+	printk(KERN_INFO"short_sh_interrupt exit");
 	return IRQ_HANDLED;
 }
 
 void short_kernelprobe(void)
 {
 	int count = 0;
+	printk(KERN_INFO"short_kernelprobe");
 	do {
 		unsigned long mask;
 
@@ -489,12 +516,15 @@ void short_kernelprobe(void)
 	} while (short_irq < 0 && count++ < 5);
 	if (short_irq < 0)
 		printk("short: probe failed %i times, giving up\n", count);
+	printk(KERN_INFO"short_kernelprobe exit");
 }
 
 irqreturn_t short_probing(int irq, void *dev_id)
 {
+	printk(KERN_INFO"short_probing");
 	if (short_irq == 0) short_irq = irq;	/* found */
 	if (short_irq != irq) short_irq = -irq; /* ambiguous */
+	printk(KERN_INFO"short_probing exit");
 	return IRQ_HANDLED;
 }
 
@@ -503,7 +533,7 @@ void short_selfprobe(void)
 	int trials[] = {3, 5, 7, 9, 0};
 	int tried[]  = {0, 0, 0, 0, 0};
 	int i, count = 0;
-
+	printk(KERN_INFO "short_selfprobe");
 	/*
 	 * install the probing handler for all possible lines. Remember
 	 * the result (0 for success, or -EBUSY) in order to only free
@@ -539,6 +569,7 @@ void short_selfprobe(void)
 
 	if (short_irq < 0)
 		printk("short: probe failed %i times, giving up\n", count);
+	printk(KERN_INFO "short_selfprobe exit");
 }
 
 
@@ -548,6 +579,7 @@ void short_selfprobe(void)
 int short_init(void)
 {
 	int result;
+	printk(KERN_INFO "short_init");
 
 	/*
 	 * first, sort out the base/short_base ambiguity: we'd better
@@ -663,11 +695,13 @@ int short_init(void)
 		}
 	}
 
+	printk(KERN_INFO "short_init exit");
 	return 0;
 }
 
 void short_cleanup(void)
 {
+	printk(KERN_INFO "short_cleanup");
 	if (short_irq >= 0) {
 		outb(0x0, short_base + 2);   /* disable the interrupt */
 		if (!share) free_irq(short_irq, NULL);
@@ -686,6 +720,7 @@ void short_cleanup(void)
 		release_region(short_base,SHORT_NR_PORTS);
 	}
 	if (short_buffer) free_page(short_buffer);
+	printk(KERN_INFO "short_cleanup exit");
 }
 
 module_init(short_init);
