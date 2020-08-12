@@ -5,11 +5,12 @@ device="scull"
 mode="664"
 
 # Group: since distributions do it differently, look for wheel or use staff
-if grep -q '^staff:' /etc/group; then
-    group="staff"
-else
-    group="wheel"
-fi
+# if grep -q '^staff:' /etc/group; then
+#     group="staff"
+# else
+#     group="wheel"
+# fi
+group="vvn"
 
 # invoke insmod with all arguments we got
 # and use a pathname, as insmod doesn't look in . by default
