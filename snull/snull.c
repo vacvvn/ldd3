@@ -54,6 +54,7 @@ ping -c 2 remote1
 
 #include <linux/in6.h>
 #include <asm/checksum.h>
+#include <linux/printk.h>
 
 MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -477,7 +478,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
         goto __LEAVE_HW_TX__;
     }
 
-    if (1)
+    if (0)
     { /* enable this conditional to look at the data */
         int i;
         // PDEBUG("len is %i\n" KERN_DEBUG "data:", len);
@@ -498,6 +499,13 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
         }
         
     }
+    if(1)
+    {
+        printk(KERN_INFO "\n------------------------------");
+        printk(KERN_INFO "before");
+        print_hex_dump(KERN_INFO, "hw tx", DUMP_PREFIX_ADDRESS, 16, 1, buf, len, true);
+        printk(KERN_INFO "------------------------------\n\n");
+    }
     /*
      * Ethhdr is 14 bytes, but the kernel arranges for iphdr
      * to be aligned (i.e., ethhdr is unaligned)
@@ -512,7 +520,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
     ih->check = 0;         /* and rebuild the checksum (ip needs it) */
     ih->check = ip_fast_csum((unsigned char *)ih,ih->ihl);
 
-    if (1)
+    if (0)
     { /* enable this conditional to look at the data */
         int i;
         // PDEBUG("len is %i\n" KERN_DEBUG "data:", len);
@@ -532,6 +540,13 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
             printk(KERN_ALERT"snull_hw_tx cant alloc mem");
         }
         
+    }
+    if(1)
+    {
+        printk(KERN_INFO "\n------------------------------");
+        printk(KERN_INFO "after");
+        print_hex_dump(KERN_INFO, "hw tx", DUMP_PREFIX_ADDRESS, 16, 1, buf, len, true);
+        printk(KERN_INFO "------------------------------\n\n");
     }
     if (dev == snull_devs[0])
         PDEBUG("%08x:%05i --> %08x:%05i\n",
@@ -573,7 +588,33 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
 __LEAVE_HW_TX__:
     printk(KERN_NOTICE"%s: snull_hw_tx EXIT", dev->name);
 }
+static void print_tx_packet(struct sk_buff *skb)
+{
+	int i;
+	int length;
 
+	if (skb_shinfo(skb)->nr_frags == 0)
+		length = skb->len;
+	else
+		length = skb_headlen(skb);
+    printk(KERN_INFO "\n\n------------------------------");
+    printk(KERN_INFO "skb: %p", skb);
+    printk(KERN_INFO "skb->data: %p", skb->data);
+    printk(KERN_INFO "skb->nr_frags: %d", skb_shinfo(skb)->nr_frags);
+    printk(KERN_INFO "skb_headlen: %d", (skb_headlen(skb)));
+    printk(KERN_INFO "skb->len: %d", skb->len);
+
+	print_hex_dump(KERN_INFO, "TX: ", DUMP_PREFIX_ADDRESS, 16, 1,
+			skb->data, length, true);
+
+    printk(KERN_INFO "------------------------------\n\n");
+	// for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
+
+	// 	print_hex_dump(KERN_INFO, "TX: ", DUMP_PREFIX_OFFSET, 16, 1,
+	// 		       skb_frag_address(&skb_shinfo(skb)->frags[i]),
+	// 		       skb_shinfo(skb)->frags[i].size, true);
+	// }
+}
 /*
  * Transmit a packet (called by the kernel)
  */
@@ -596,7 +637,7 @@ int snull_tx(struct sk_buff *skb, struct net_device *dev)
 
     /* Remember the skb, so we can free it at interrupt time */
     priv->skb = skb;
-
+    print_tx_packet(skb);
     /* actual deliver of data is device-specific, and not shown here */
     snull_hw_tx(data, len, dev);
 
